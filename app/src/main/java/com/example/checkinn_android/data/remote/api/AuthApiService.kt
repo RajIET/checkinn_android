@@ -11,6 +11,7 @@ import retrofit2.http.GET
 import retrofit2.http.POST
 import retrofit2.http.PUT
 import retrofit2.http.Path
+import retrofit2.http.Query
 
 /**
  * Main Retrofit service backed by the primary [OkHttpClient] that includes
@@ -37,6 +38,7 @@ interface AuthApiService {
 
     @GET("BookingOrders/{id}/IdProof")
     suspend fun downloadIdProof(
-        @Path("id") id: Int
+        @Path("id") id: Int,
+        @Query("imageId") imageId: Int
     ): Response<ResponseBody>
 }

@@ -1,5 +1,6 @@
 package com.example.checkinn_android.ui.details
 
+import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -38,14 +39,16 @@ class CheckinnDetailsViewModel @Inject constructor(
             _uiState.value = CheckinnDetailsUiState(
                 booking = booking,
                 roomNumber = booking.roomNo ?: "",
-                numberOfGuests = 2,
+                numberOfGuests = (booking.noOfGuest?.takeIf { it > 0 }) ?: 1,
                 checkoutDate = booking.checkoutDate?.take(10) ?: "",
                 status = booking.status
             )
             val isApprovedOrDenied = booking.status == BookingStatusType.Approved ||
                     booking.status == BookingStatusType.Rejected
-            if (!isApprovedOrDenied) {
-                loadIdProofImage(booking.id)
+            val imageCount = booking.idProofImageCount ?: 1
+            val hasImageToLoad = imageCount > 0
+            if (!isApprovedOrDenied && hasImageToLoad) {
+                loadIdProofImages(booking.id, imageCount)
             }
         }
     }
@@ -54,16 +57,16 @@ class CheckinnDetailsViewModel @Inject constructor(
         val currentState = _uiState.value ?: return
         when (event) {
             is CheckinnDetailsUiEvent.RoomNumberChanged -> {
-                _uiState.update { it?.copy(roomNumber = event.roomNumber) }
+                _uiState.update { it?.copy(roomNumber = event.roomNumber, roomNumberError = null) }
             }
             is CheckinnDetailsUiEvent.IncrementGuests -> {
                 if (currentState.numberOfGuests < 10) {
-                    _uiState.update { it?.copy(numberOfGuests = it.numberOfGuests + 1) }
+                    _uiState.update { it?.copy(numberOfGuests = it.numberOfGuests + 1, numberOfGuestsError = null) }
                 }
             }
             is CheckinnDetailsUiEvent.DecrementGuests -> {
                 if (currentState.numberOfGuests > 1) {
-                    _uiState.update { it?.copy(numberOfGuests = it.numberOfGuests - 1) }
+                    _uiState.update { it?.copy(numberOfGuests = it.numberOfGuests - 1, numberOfGuestsError = null) }
                 }
             }
             is CheckinnDetailsUiEvent.CheckoutDateChanged -> {
@@ -71,6 +74,7 @@ class CheckinnDetailsViewModel @Inject constructor(
             }
             is CheckinnDetailsUiEvent.ApproveCheckin -> approveCheckin()
             is CheckinnDetailsUiEvent.DenyCheckin -> denyCheckin()
+            is CheckinnDetailsUiEvent.CheckoutCheckin -> checkoutCheckin()
             is CheckinnDetailsUiEvent.DismissAlert -> {
                 val shouldDismissScreen = currentState.didMakeChanges
                 _uiState.update { it?.copy(alert = null) }
@@ -78,25 +82,38 @@ class CheckinnDetailsViewModel @Inject constructor(
                     viewModelScope.launch { _effect.send(CheckinnDetailsUiEffect.NavigateBack) }
                 }
             }
+            is CheckinnDetailsUiEvent.FlipIdProofImage -> {
+                if (currentState.idProofImages.size == 2) {
+                    _uiState.update { it?.copy(activeImageIndex = if (it.activeImageIndex == 0) 1 else 0) }
+                }
+            }
         }
     }
 
-    private fun loadIdProofImage(id: Int) {
-        viewModelScope.launch {
-            downloadIdProofUseCase(id).collect { result ->
-                when (result) {
-                    is Resource.Loading -> {
-                        _uiState.update { it?.copy(isImageLoading = true) }
-                    }
-                    is Resource.Success -> {
+    private fun loadIdProofImages(bookingId: Int, imageCount: Int) {
+        _uiState.update { it?.copy(isImageLoading = true) }
+        val bitmaps = MutableList<Bitmap?>(imageCount) { null }
+        val pendingCount = java.util.concurrent.atomic.AtomicInteger(imageCount)
+
+        for (i in 0 until imageCount) {
+            val imageId = i + 1
+            viewModelScope.launch {
+                downloadIdProofUseCase(bookingId, imageId).collect { result ->
+                    if (result is Resource.Success) {
                         val bytes = result.data
                         val bitmap = if (bytes != null && bytes.isNotEmpty()) {
                             BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
                         } else null
-                        _uiState.update { it?.copy(isImageLoading = false, idProofImage = bitmap) }
+                        bitmaps[i] = bitmap
                     }
-                    is Resource.Error -> {
-                        _uiState.update { it?.copy(isImageLoading = false) }
+                    
+                    if (result !is Resource.Loading && pendingCount.decrementAndGet() == 0) {
+                        _uiState.update { 
+                            it?.copy(
+                                isImageLoading = false,
+                                idProofImages = bitmaps.filterNotNull()
+                            )
+                        }
                     }
                 }
             }
@@ -105,6 +122,35 @@ class CheckinnDetailsViewModel @Inject constructor(
 
     private fun approveCheckin() {
         val currentState = _uiState.value ?: return
+
+        if (currentState.roomNumber.isBlank()) {
+            _uiState.update {
+                it?.copy(
+                    roomNumberError = "Room number is required",
+                    alert = AppAlert(
+                        title = "Room Number Required",
+                        message = "Please enter a room number before approving check-in.",
+                        buttonTitle = "OK"
+                    )
+                )
+            }
+            return
+        }
+
+        if (currentState.numberOfGuests <= 0) {
+            _uiState.update {
+                it?.copy(
+                    numberOfGuestsError = "Number of guests is required",
+                    alert = AppAlert(
+                        title = "Guest Count Required",
+                        message = "Please select at least 1 guest before approving check-in.",
+                        buttonTitle = "OK"
+                    )
+                )
+            }
+            return
+        }
+
         viewModelScope.launch {
             if (!checkPermissionUseCase.hasApprovePermission()) {
                 _uiState.update {
@@ -119,11 +165,13 @@ class CheckinnDetailsViewModel @Inject constructor(
                 return@launch
             }
 
-            _uiState.update { it?.copy(isProcessing = true) }
+            _uiState.update { it?.copy(isProcessing = true, roomNumberError = null, numberOfGuestsError = null) }
             updateBookingStatusUseCase(
                 bookingId = currentState.booking.id,
                 statusId = 3, // Approved
-                noOfGuest = currentState.numberOfGuests
+                noOfGuest = currentState.numberOfGuests,
+                roomNumber = currentState.roomNumber.trim(),
+                checkoutDate = currentState.checkoutDate.ifBlank { null }
             ).collect { result ->
                 when (result) {
                     is Resource.Loading -> {
@@ -216,6 +264,20 @@ class CheckinnDetailsViewModel @Inject constructor(
                     }
                 }
             }
+        }
+    }
+
+    private fun checkoutCheckin() {
+        // Checkout API is not yet available — UI-only placeholder.
+        val currentState = _uiState.value ?: return
+        _uiState.update {
+            it?.copy(
+                alert = AppAlert(
+                    title = "Checkout",
+                    message = "Checkout for ${currentState.guestName} (Order: ${currentState.orderNo}) is not yet supported.",
+                    buttonTitle = "OK"
+                )
+            )
         }
     }
 }

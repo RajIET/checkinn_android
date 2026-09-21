@@ -8,7 +8,7 @@ import javax.inject.Inject
 class DownloadIdProofUseCase @Inject constructor(
     private val repository: BookingRepository
 ) {
-    suspend operator fun invoke(id: Int): Flow<Resource<ByteArray>> {
-        return repository.downloadIdProof(id)
+    suspend operator fun invoke(id: Int, imageId: Int): Flow<Resource<ByteArray>> {
+        return repository.downloadIdProof(id, imageId)
     }
 }

@@ -35,7 +35,7 @@ data class BookingOrderDto(
     val bookingSource: String?,
     @SerializedName("hotel_id")
     val hotelId: Int?,
-    @SerializedName("room_no")
+    @SerializedName(value = "room_no", alternate = ["room_number", "roomNo", "room_Number"])
     val roomNo: String?,
     @SerializedName("customer_ID")
     val customerId: Int?,
@@ -59,6 +59,10 @@ data class BookingOrderDto(
     val idProofNo: String?,
     @SerializedName("idProof_ImagePath")
     val idProofImagePath: String?,
+    @SerializedName("idProofImageCount")
+    val idProofImageCount: Int? = null,
+    @SerializedName(value = "no_Of_Guest", alternate = ["no_Of_Guests", "noOfGuest", "no_of_guest"])
+    val noOfGuest: Int? = null,
     @SerializedName("status_id")
     val statusId: Int?,
     @SerializedName("booking_Status")
@@ -99,5 +103,9 @@ data class UpdateBookingStatusRequestDto(
     @SerializedName("status_ID")
     val statusId: Int,
     @SerializedName("no_Of_Guest")
-    val noOfGuest: Int?
+    val noOfGuest: Int?,
+    @SerializedName("roomNo")
+    val roomNumber: String? = null,
+    @SerializedName("checkoutDate")
+    val checkoutDate: String? = null
 )

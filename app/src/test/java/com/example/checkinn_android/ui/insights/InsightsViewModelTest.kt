@@ -73,10 +73,12 @@ private class FakeBookingRepository : BookingRepository {
     override suspend fun updateBookingStatus(
         bookingId: Int,
         statusId: Int,
-        noOfGuest: Int?
+        noOfGuest: Int?,
+        roomNumber: String?,
+        checkoutDate: String?
     ): Flow<Resource<Unit>> = flowOf(Resource.Success(Unit))
 
-    override suspend fun downloadIdProof(id: Int): Flow<Resource<ByteArray>> =
+    override suspend fun downloadIdProof(id: Int, imageId: Int): Flow<Resource<ByteArray>> =
         flowOf(Resource.Success(ByteArray(0)))
 }
 

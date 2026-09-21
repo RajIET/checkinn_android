@@ -85,10 +85,15 @@ fun InsightsScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding)
+                .padding(top = innerPadding.calculateTopPadding())
                 .background(DSColors.background)
                 .verticalScroll(rememberScrollState())
-                .padding(DS.Spacing.md),
+                .padding(
+                    start = DS.Spacing.md,
+                    top = DS.Spacing.md,
+                    end = DS.Spacing.md,
+                    bottom = 5.dp
+                ),
             verticalArrangement = Arrangement.spacedBy(DS.Spacing.lg)
         ) {
             TimeFilterSegmentControl(

@@ -73,6 +73,8 @@ data class BookingOrder(
     val idProofTypeId: Int?,
     val idProofNo: String?,
     val idProofImagePath: String?,
+    val idProofImageCount: Int? = null,
+    val noOfGuest: Int? = null,
     val statusId: Int?,
     val bookingStatus: BookingStatus?,
     val customer: Customer?

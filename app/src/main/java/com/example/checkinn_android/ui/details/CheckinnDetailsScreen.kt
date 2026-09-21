@@ -9,10 +9,12 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
@@ -31,6 +33,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.CreditCard
 import androidx.compose.material.icons.filled.DoorFront
 import androidx.compose.material.icons.filled.Email
+import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material.icons.filled.LocationCity
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Lock
@@ -40,6 +43,7 @@ import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.Tag
 import androidx.compose.material.icons.filled.Tune
+import androidx.compose.material.icons.filled.Flip
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -65,7 +69,9 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.style.LineBreak
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.checkinn_android.R
@@ -139,12 +145,20 @@ fun CheckinnDetailsScreen(
             )
         },
         bottomBar = {
-            if (currentState.showActionButtons) {
-                BottomActionBar(
-                    isProcessing = currentState.isProcessing,
-                    onDeny = { viewModel.onEvent(CheckinnDetailsUiEvent.DenyCheckin) },
-                    onApprove = { viewModel.onEvent(CheckinnDetailsUiEvent.ApproveCheckin) }
-                )
+            when {
+                currentState.showActionButtons -> {
+                    BottomActionBar(
+                        isProcessing = currentState.isProcessing,
+                        onDeny = { viewModel.onEvent(CheckinnDetailsUiEvent.DenyCheckin) },
+                        onApprove = { viewModel.onEvent(CheckinnDetailsUiEvent.ApproveCheckin) }
+                    )
+                }
+                currentState.showCheckoutButton -> {
+                    CheckoutBottomBar(
+                        isProcessing = currentState.isProcessing,
+                        onCheckout = { viewModel.onEvent(CheckinnDetailsUiEvent.CheckoutCheckin) }
+                    )
+                }
             }
         },
         containerColor = DSColors.background
@@ -160,10 +174,18 @@ fun CheckinnDetailsScreen(
                     .fillMaxSize()
                     .verticalScroll(rememberScrollState())
             ) {
-                HeroImageSection(state = currentState)
+                HeroImageSection(
+                    state = currentState,
+                    onEvent = viewModel::onEvent
+                )
 
                 Column(
-                    modifier = Modifier.padding(DS.Spacing.md),
+                    modifier = Modifier.padding(
+                        start = DS.Spacing.md,
+                        top = DS.Spacing.md,
+                        end = DS.Spacing.md,
+                        bottom = 5.dp
+                    ),
                     verticalArrangement = Arrangement.spacedBy(DS.Spacing.lg)
                 ) {
                     GuestHeaderSection(state = currentState)
@@ -177,8 +199,6 @@ fun CheckinnDetailsScreen(
                     currentState.specialRequest?.takeIf { it.isNotBlank() }?.let { request ->
                         SpecialRequestSection(text = request)
                     }
-
-                    Spacer(modifier = Modifier.height(DS.Spacing.xl))
                 }
             }
 
@@ -201,7 +221,10 @@ private fun maskIdNumber(idNo: String?): String {
 }
 
 @Composable
-private fun HeroImageSection(state: CheckinnDetailsUiState) {
+private fun HeroImageSection(
+    state: CheckinnDetailsUiState,
+    onEvent: (CheckinnDetailsUiEvent) -> Unit
+) {
     val isApprovedOrDenied = state.status == BookingStatusType.Approved ||
             state.status == BookingStatusType.Rejected
 
@@ -212,13 +235,47 @@ private fun HeroImageSection(state: CheckinnDetailsUiState) {
             .background(DSColors.surface),
         contentAlignment = Alignment.BottomStart
     ) {
-        if (!isApprovedOrDenied && state.idProofImage != null) {
+        val activeBitmap = state.activeBitmap
+        if (!isApprovedOrDenied && activeBitmap != null) {
             Image(
-                bitmap = state.idProofImage.asImageBitmap(),
+                bitmap = activeBitmap.asImageBitmap(),
                 contentDescription = "Identity Document",
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .then(
+                        if (state.showFlipButton) Modifier.clickable { onEvent(CheckinnDetailsUiEvent.FlipIdProofImage) }
+                        else Modifier
+                    ),
                 contentScale = ContentScale.Crop
             )
+            if (state.showFlipButton) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(top = DS.Spacing.sm, end = DS.Spacing.sm)
+                        .background(Color.Black.copy(alpha = 0.55f), shape = RoundedCornerShape(20.dp))
+                        .clickable { onEvent(CheckinnDetailsUiEvent.FlipIdProofImage) }
+                        .padding(horizontal = 10.dp, vertical = 6.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Flip,
+                            contentDescription = "Flip ID image",
+                            tint = Color.White,
+                            modifier = Modifier.size(14.dp)
+                        )
+                        Text(
+                            text = "${state.activeImageIndex + 1}/2",
+                            style = DSTypography.caption,
+                            color = Color.White
+                        )
+                    }
+                }
+            }
         } else if (!isApprovedOrDenied && state.isImageLoading) {
             Box(
                 modifier = Modifier.fillMaxSize(),
@@ -388,7 +445,8 @@ private fun EditableBookingSection(
                 placeholder = "Enter room number",
                 leadingIcon = Icons.Default.DoorFront,
                 value = state.roomNumber,
-                onValueChange = { onEvent(CheckinnDetailsUiEvent.RoomNumberChanged(it)) }
+                onValueChange = { onEvent(CheckinnDetailsUiEvent.RoomNumberChanged(it)) },
+                errorMessage = state.roomNumberError
             )
 
             // Number of Guests Stepper
@@ -469,6 +527,15 @@ private fun EditableBookingSection(
                             }
                         }
                     }
+                }
+
+                state.numberOfGuestsError?.let { errorMsg ->
+                    Text(
+                        text = errorMsg,
+                        style = DSTypography.caption,
+                        color = DSColors.danger,
+                        modifier = Modifier.padding(start = DS.Spacing.xs)
+                    )
                 }
             }
 
@@ -574,6 +641,7 @@ private fun BookingDetailsSection(state: CheckinnDetailsUiState) {
 
             Column(verticalArrangement = Arrangement.spacedBy(DS.Spacing.sm)) {
                 DetailRow(icon = Icons.Default.CalendarMonth, title = "Check-in Date", value = state.checkinDateFormatted)
+                DetailRow(icon = Icons.Default.Person, title = "Guests", value = "${state.numberOfGuests} Guest${if (state.numberOfGuests > 1) "s" else ""}")
                 DetailRow(icon = Icons.Default.MeetingRoom, title = "Source", value = state.bookingSource)
                 DetailRow(icon = Icons.Default.LocationCity, title = "Floor", value = state.roomFloor)
                 state.externalBookingId?.takeIf { it.isNotBlank() }?.let { extId ->
@@ -619,32 +687,41 @@ private fun AddressDetailBlock(
     title: String,
     value: String
 ) {
-    Column(
+
+    fun String.normalizeWhitespace(): String {
+        return this.replace(Regex("\\s+"), " ").trim()
+    }
+
+    Row(
         modifier = Modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(DS.Spacing.xxs)
+        verticalAlignment = Alignment.Top
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = DSColors.slate,
-                modifier = Modifier.size(DS.Icon.sm)
-            )
-            Spacer(modifier = Modifier.width(DS.Spacing.sm))
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = DSColors.slate,
+            modifier = Modifier
+                .size(DS.Icon.sm)
+                .padding(top = 2.dp)
+        )
+        Spacer(modifier = Modifier.width(DS.Spacing.sm))
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(DS.Spacing.xxs)
+        ) {
             Text(
                 text = title,
                 style = DSTypography.body,
                 color = DSColors.secondaryText
             )
+            Text(
+                text = value.normalizeWhitespace(),
+                style = DSTypography.bodyEmphasized,
+                color = DSColors.primaryText,
+                modifier = Modifier
+                    .fillMaxWidth()
+            )
         }
-        Text(
-            text = value,
-            style = DSTypography.bodyEmphasized,
-            color = DSColors.primaryText,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(start = DS.Icon.sm + DS.Spacing.sm)
-        )
     }
 }
 
@@ -696,7 +773,8 @@ private fun BottomActionBar(
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .background(DSColors.surface)
+            .background(DSColors.background)
+            .navigationBarsPadding()
             .padding(DS.Spacing.md)
     ) {
         Row(
@@ -725,5 +803,28 @@ private fun BottomActionBar(
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun CheckoutBottomBar(
+    isProcessing: Boolean,
+    onCheckout: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(DSColors.background)
+            .navigationBarsPadding()
+            .padding(DS.Spacing.md)
+    ) {
+        DSButton(
+            title = "Checkout",
+            icon = Icons.Default.ExitToApp,
+            variant = DSButtonVariant.Primary,
+            isLoading = isProcessing,
+            isDisabled = isProcessing,
+            action = onCheckout
+        )
     }
 }

@@ -20,6 +20,7 @@ import androidx.compose.material.icons.filled.Bed
 import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.EventAvailable
 import androidx.compose.material.icons.filled.MeetingRoom
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.Tag
 import androidx.compose.material3.HorizontalDivider
@@ -50,6 +51,7 @@ data class CheckinnItemModel(
     val roomType: String? = null,
     val bookingSource: String? = null,
     val idProofTypeName: String = "Aadhaar Card",
+    val noOfGuest: Int? = null,
     val status: BookingStatusType
 )
 
@@ -71,6 +73,7 @@ fun CheckinnsItem(
             roomType = checkin.roomType?.takeIf { it.isNotBlank() },
             bookingSource = checkin.bookingSource?.takeIf { it.isNotBlank() },
             idProofTypeName = checkin.idProofTypeName,
+            noOfGuest = checkin.noOfGuest,
             status = checkin.status
         ),
         onShowDetails = onShowDetails,
@@ -179,7 +182,7 @@ fun CheckinnsItem(
                     )
                 }
 
-                // Row 3: Room info | Booking source
+                // Row 3: Room info | Number of guests
                 val hasRoom = !item.roomNo.isNullOrBlank() || !item.roomType.isNullOrBlank()
                 val roomText = when {
                     !item.roomNo.isNullOrBlank() && !item.roomType.isNullOrBlank() -> "Room ${item.roomNo} · ${item.roomType}"
@@ -187,6 +190,8 @@ fun CheckinnsItem(
                     !item.roomType.isNullOrBlank() -> item.roomType!!
                     else -> "Room TBD"
                 }
+                val guestCount = item.noOfGuest ?: 1
+                val guestText = "$guestCount Guest${if (guestCount > 1) "s" else ""}"
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -199,14 +204,27 @@ fun CheckinnsItem(
                         modifier = Modifier.weight(1f)
                     )
                     Spacer(modifier = Modifier.width(DS.Spacing.sm))
-                    if (!item.bookingSource.isNullOrBlank()) {
+                    InfoChip(
+                        icon = Icons.Default.Person,
+                        text = guestText,
+                        iconColor = DSColors.brand,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+
+                // Row 4: Booking source (if available)
+                if (!item.bookingSource.isNullOrBlank()) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
                         InfoChip(
                             icon = Icons.Default.Bed,
                             text = item.bookingSource,
-                            iconColor = DSColors.brand,
+                            iconColor = DSColors.indigo,
                             modifier = Modifier.weight(1f)
                         )
-                    } else {
                         Spacer(modifier = Modifier.weight(1f))
                     }
                 }

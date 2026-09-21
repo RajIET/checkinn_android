@@ -6,6 +6,12 @@ import kotlinx.coroutines.flow.Flow
 
 interface BookingRepository {
     fun getBookingOrders(): Flow<Resource<List<BookingOrder>>>
-    suspend fun updateBookingStatus(bookingId: Int, statusId: Int, noOfGuest: Int?): Flow<Resource<Unit>>
-    suspend fun downloadIdProof(id: Int): Flow<Resource<ByteArray>>
+    suspend fun updateBookingStatus(
+        bookingId: Int,
+        statusId: Int,
+        noOfGuest: Int?,
+        roomNumber: String? = null,
+        checkoutDate: String? = null
+    ): Flow<Resource<Unit>>
+    suspend fun downloadIdProof(id: Int, imageId: Int): Flow<Resource<ByteArray>>
 }

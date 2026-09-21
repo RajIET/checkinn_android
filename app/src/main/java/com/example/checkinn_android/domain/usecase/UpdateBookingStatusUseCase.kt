@@ -11,8 +11,10 @@ class UpdateBookingStatusUseCase @Inject constructor(
     suspend operator fun invoke(
         bookingId: Int,
         statusId: Int,
-        noOfGuest: Int?
+        noOfGuest: Int?,
+        roomNumber: String? = null,
+        checkoutDate: String? = null
     ): Flow<Resource<Unit>> {
-        return repository.updateBookingStatus(bookingId, statusId, noOfGuest)
+        return repository.updateBookingStatus(bookingId, statusId, noOfGuest, roomNumber, checkoutDate)
     }
 }

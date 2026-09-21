@@ -8,10 +8,13 @@ import com.example.checkinn_android.ui.designsystem.components.AppAlert
 data class CheckinnDetailsUiState(
     val booking: BookingOrder,
     val roomNumber: String = "",
-    val numberOfGuests: Int = 2,
+    val roomNumberError: String? = null,
+    val numberOfGuests: Int = 1,
+    val numberOfGuestsError: String? = null,
     val checkoutDate: String = "",
     val status: BookingStatusType = BookingStatusType.Initiated,
-    val idProofImage: Bitmap? = null,
+    val idProofImages: List<Bitmap> = emptyList(),
+    val activeImageIndex: Int = 0,
     val isImageLoading: Boolean = false,
     val isProcessing: Boolean = false,
     val alert: AppAlert? = null,
@@ -19,6 +22,9 @@ data class CheckinnDetailsUiState(
 ) {
     val showActionButtons: Boolean
         get() = status != BookingStatusType.Approved && status != BookingStatusType.Rejected
+
+    val showCheckoutButton: Boolean
+        get() = status == BookingStatusType.Approved
 
     val guestName: String
         get() = booking.customer?.customerName ?: "Guest"
@@ -67,6 +73,14 @@ data class CheckinnDetailsUiState(
 
     val idProofTypeName: String
         get() = booking.idProofTypeName
+
+    /** The bitmap currently shown in the image viewer. */
+    val activeBitmap: Bitmap?
+        get() = idProofImages.getOrNull(activeImageIndex)
+
+    /** True only when two images are fetched and available to flip between. */
+    val showFlipButton: Boolean
+        get() = idProofImages.size == 2
 }
 
 sealed interface CheckinnDetailsUiEvent {
@@ -76,7 +90,9 @@ sealed interface CheckinnDetailsUiEvent {
     data class CheckoutDateChanged(val checkoutDate: String) : CheckinnDetailsUiEvent
     data object ApproveCheckin : CheckinnDetailsUiEvent
     data object DenyCheckin : CheckinnDetailsUiEvent
+    data object CheckoutCheckin : CheckinnDetailsUiEvent
     data object DismissAlert : CheckinnDetailsUiEvent
+    data object FlipIdProofImage : CheckinnDetailsUiEvent
 }
 
 sealed interface CheckinnDetailsUiEffect {

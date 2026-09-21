@@ -70,7 +70,7 @@ fun CheckinnsListScreen(
             onRefresh = { viewModel.onEvent(CheckinnsListUiEvent.Refresh) },
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding)
+                .padding(top = innerPadding.calculateTopPadding())
                 .background(DSColors.background)
         ) {
             when {
@@ -85,7 +85,12 @@ fun CheckinnsListScreen(
                 state.orders.isNotEmpty() -> {
                     LazyColumn(
                         modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(DS.Spacing.md),
+                        contentPadding = PaddingValues(
+                            start = DS.Spacing.md,
+                            top = DS.Spacing.md,
+                            end = DS.Spacing.md,
+                            bottom = 5.dp
+                        ),
                         verticalArrangement = Arrangement.spacedBy(DS.Spacing.sm)
                     ) {
                         items(

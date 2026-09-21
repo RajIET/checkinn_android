@@ -52,14 +52,18 @@ class BookingRepositoryImpl @Inject constructor(
     override suspend fun updateBookingStatus(
         bookingId: Int,
         statusId: Int,
-        noOfGuest: Int?
+        noOfGuest: Int?,
+        roomNumber: String?,
+        checkoutDate: String?
     ): Flow<Resource<Unit>> = flow {
         emit(Resource.Loading)
         try {
             val request = UpdateBookingStatusRequestDto(
                 bookingId = bookingId,
                 statusId = statusId,
-                noOfGuest = noOfGuest
+                noOfGuest = noOfGuest,
+                roomNumber = roomNumber,
+                checkoutDate = checkoutDate
             )
             val response = apiService.updateBookingStatus(request)
             if (response.isSuccessful) {
@@ -74,10 +78,10 @@ class BookingRepositoryImpl @Inject constructor(
         }
     }.flowOn(dispatchers.io)
 
-    override suspend fun downloadIdProof(id: Int): Flow<Resource<ByteArray>> = flow {
+    override suspend fun downloadIdProof(id: Int, imageId: Int): Flow<Resource<ByteArray>> = flow {
         emit(Resource.Loading)
         try {
-            val response = apiService.downloadIdProof(id)
+            val response = apiService.downloadIdProof(id, imageId)
             if (response.isSuccessful && response.body() != null) {
                 emit(Resource.Success(response.body()!!.bytes()))
             } else {
@@ -107,6 +111,8 @@ class BookingRepositoryImpl @Inject constructor(
             idProofTypeId = idProofTypeId,
             idProofNo = idProofNo,
             idProofImagePath = idProofImagePath,
+            idProofImageCount = idProofImageCount,
+            noOfGuest = noOfGuest,
             statusId = statusId,
             bookingStatus = bookingStatus?.let {
                 BookingStatus(
